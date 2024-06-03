@@ -111,7 +111,7 @@ ENV PANDA_PREVIEW=disable
 ENV PANDA_CI=true
 
 # Install Hugo
-RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
+#RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
 
 # Install Jekyll
 RUN gem install jekyll
