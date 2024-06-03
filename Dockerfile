@@ -1,8 +1,8 @@
-FROM node:lts
+FROM node:latest
 SHELL ["/bin/bash", "-c"]
-ENV LC_ALL en_US.UTF-8
-ENV LANG en_US.UTF-8
-ENV LANGUAGE en_US.UTF-8
+ENV LC_ALL="en_US.UTF-8"
+ENV LANG="en_US.UTF-8"
+ENV LANGUAGE="en_US.UTF-8"
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends locales locales-all software-properties-common apt-transport-https \
@@ -30,14 +30,15 @@ RUN echo 'export RBENV_ROOT=/usr/local/rbenv' >> /etc/profile.d/rbenv.sh
 RUN echo 'export PATH="$RBENV_ROOT/bin:$PATH"' >> /etc/profile.d/rbenv.sh
 RUN echo 'eval "$(rbenv init -)"' >> /etc/profile.d/rbenv.sh
 RUN chmod +x /etc/profile.d/rbenv.sh
-ENV RBENV_ROOT=/usr/local/rbenv
+ENV RBENV_ROOT="/usr/local/rbenv"
 ENV PATH="$RBENV_ROOT/bin:$RBENV_ROOT/shims:$PATH"
 
 # Install ruby-build
 RUN mkdir /usr/local/rbenv/plugins
 RUN git clone https://github.com/sstephenson/ruby-build.git /usr/local/rbenv/plugins/ruby-build
 RUN /usr/local/rbenv/plugins/ruby-build/install.sh
-RUN rbenv install 2.6.2 && rbenv global 2.6.2
+RUN rbenv install -l && rbenv global -l
+#RUN rbenv install 2.6.2 && rbenv global 2.6.2
 RUN gem install bundler -v 2.4.22
 
 # Install pyenv and Python
@@ -48,18 +49,21 @@ ENV PATH="${PYENV_ROOT}/shims:${PYENV_ROOT}/bin:${PATH}"
 RUN pyenv install 3.8.0 && pyenv global 3.8.0
 RUN pip install --upgrade pip
 
+# Install Sphinx
+RUN pip install sphinx
+
 # Install gimme (Go manager)
 RUN mkdir -p /opt/buildhome/.gimme/bin/ && \
     mkdir -p /opt/buildhome/.gimme/env/ && \
     curl -sL -o /opt/buildhome/.gimme/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme && \
     chmod u+x /opt/buildhome/.gimme/bin/gimme
-ENV PATH "$PATH:/opt/buildhome/.gimme/bin"
-ENV GOPATH "/opt/buildhome/.gimme_cache/gopath"
-ENV GOCACHE "/opt/buildhome/.gimme_cache/gocache"
-ENV GIMME_GO_VERSION "1.19.3"
-ENV GIMME_ENV_PREFIX "/opt/buildhome/.gimme/env"
-ENV GIMME_VERSION_PREFIX "/opt/buildhome/.gimme/versions"
-ENV GIMME_TYPE "binary"
+ENV PATH="$PATH:/opt/buildhome/.gimme/bin"
+ENV GOPATH="/opt/buildhome/.gimme_cache/gopath"
+ENV GOCACHE="/opt/buildhome/.gimme_cache/gocache"
+ENV GIMME_GO_VERSION="1.19.3"
+ENV GIMME_ENV_PREFIX="/opt/buildhome/.gimme/env"
+ENV GIMME_VERSION_PREFIX="/opt/buildhome/.gimme/versions"
+ENV GIMME_TYPE="binary"
 RUN eval "$(gimme 1.19.3)"
 
 # PHP: set default to 5.6
@@ -83,23 +87,26 @@ RUN apt-get install -y \
     php7.2-gd \
     php7.2-sqlite3 \
     php7.2-curl \
-    php7.2-zip && apt-get clean && rm -rf /var/lib/apt/lists/*
+    php7.2-zip 
+    
+# do not delete package cache we need it for version switching.  && apt-get clean && rm -rf /var/lib/apt/lists/*
 RUN mkdir /app
 WORKDIR /app
 COPY entrypoint.sh /
 RUN chmod +x /entrypoint.sh
 
 # Install nvm and use it to install Node.js
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
-        export NVM_DIR="$HOME/.nvm" && \
-        . "$NVM_DIR/nvm.sh"
+#RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
+#        export NVM_DIR="$HOME/.nvm" && \
+#        . "$NVM_DIR/nvm.sh"
 ENV NVM_DIR="/root/.nvm"
 ENV BUILD_COMMAND="npm install"
 ENV ROOT_PATH="."
 ENV BUILD_PATH="build"
 ENV NODE_ENV="product"
 ENV APP_NAME="test"
-ENV NPM_VERSION="10.7.0"
+# Gets specified by the node version (complex version matrix)
+ENV NPM_VERSION=""
 ENV NPM_FLAGS=""
 ENV NPM_TOKEN=""
 ENV USE_YARN="false"
@@ -117,16 +124,7 @@ ENV PANDA_CI=true
 RUN gem install jekyll
 
 # Install Gatsby
-RUN npm install -g gatsby-cli
-
-# Install Next.js
-RUN npm install -g create-next-app
-
-# Install Nuxt.js
-RUN npm install -g create-nuxt-app
-
-# Install Sphinx
-RUN pip install sphinx
+RUN npm install -g gatsby-cli create-next-app create-nuxt-app npm@latest yarn@latest pnpm@latest
 
 WORKDIR /
 CMD [ "./entrypoint.sh" ]
