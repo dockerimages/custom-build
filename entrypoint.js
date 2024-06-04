@@ -37,7 +37,7 @@ const env = Object.assign({
     PANDA_PREVIEW: 'disabled',
     // true/false will enable/disable pipeline trigger. ( defaults to `true` if not specified )
     PANDA_CI: true
-},process.env)
+},process.env);
 
 const usesYarn = env.USE_YARN || Object.keys(env).filter(key=key.startsWith('YARN')).find(yarnKey=>env[yarnKey]);
 
@@ -79,6 +79,11 @@ const usePhp = (PHP_VERSION=env[PHP_VERSION]||"7.2") =>{
     RUN(`apt-get install -y php${PHP_VERSION} php${PHP_VERSION}-xml \
     php${PHP_VERSION}-mbstring php${PHP_VERSION}-gd php${PHP_VERSION}-sqlite3 \
     php${PHP_VERSION}-curl php${PHP_VERSION}-zip`);
+    RUN(`update-alternatives --set php /usr/bin/php${PHP_VERSION}`);
+    RUN(`update-alternatives --set php /usr/bin/phar${PHP_VERSION}`);
+    RUN(`update-alternatives --set php /usr/bin/phar.pahr${PHP_VERSION}`);
+    RUN(`update-alternatives --set php /usr/bin/phpize${PHP_VERSION}`);
+    RUN(`update-alternatives --set php /usr/bin/php-config${PHP_VERSION}`);
 };
 
 const installNodeGlobal = ()=>{/** Preinstalled via DockerImage node:latest */};
@@ -95,6 +100,21 @@ const useGo = (GO_VERSION="") => {
     // gvm install go1.18 -B
     // gvm use go1.18
     // gvm use go1.18 --default
+
+    // Notes about compiling
+    /**
+     To install Go 1.20+
+     Go 1.5+ removed the C compilers from the toolchain and replaced them with one written in Go   
+     Go 1.20+ requires go1.17.3+. Use the below:
+        gvm install go1.4 -B
+        gvm use go1.4
+        export GOROOT_BOOTSTRAP=$GOROOT
+        gvm install go1.17.13
+        gvm use go1.17.13
+        export GOROOT_BOOTSTRAP=$GOROOT
+        gvm install go1.20
+        gvm use go1.20
+     */
 };
 // NodeJS
 const installPythonGlobal = ()=>{};

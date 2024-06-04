@@ -1,5 +1,6 @@
 FROM node:latest
-SHELL ["/bin/bash", "-c"]
+## Shell is not Supported in OCI Images.
+# SHELL ["/bin/bash", "-c"]
 ENV LC_ALL="en_US.UTF-8"
 ENV LANG="en_US.UTF-8"
 ENV LANGUAGE="en_US.UTF-8"
@@ -21,8 +22,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends locales locales
     zip \
     gnupg2 \
     postgresql \
+    bison \
     && apt-get clean && apt-get update && rm -rf /var/lib/apt/lists/*
 
+# Go Version manager source /root/.gvm/scripts/gvm
+RUN curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer | bash
+   
 # Install rbenv and Ruby
 RUN git clone https://github.com/sstephenson/rbenv.git /usr/local/rbenv
 RUN echo '# rbenv setup' > /etc/profile.d/rbenv.sh
@@ -37,9 +42,9 @@ ENV PATH="$RBENV_ROOT/bin:$RBENV_ROOT/shims:$PATH"
 RUN mkdir /usr/local/rbenv/plugins
 RUN git clone https://github.com/sstephenson/ruby-build.git /usr/local/rbenv/plugins/ruby-build
 RUN /usr/local/rbenv/plugins/ruby-build/install.sh
-RUN rbenv install -l && rbenv global -l
-#RUN rbenv install 2.6.2 && rbenv global 2.6.2
-RUN gem install bundler -v 2.4.22
+RUN rbenv install 3.3.2 && rbenv global 3.3.2
+RUN gem install bundler 
+#-v 2.4.22
 
 # Install pyenv and Python
 RUN curl https://pyenv.run | bash
@@ -52,19 +57,19 @@ RUN pip install --upgrade pip
 # Install Sphinx
 RUN pip install sphinx
 
-# Install gimme (Go manager)
-RUN mkdir -p /opt/buildhome/.gimme/bin/ && \
-    mkdir -p /opt/buildhome/.gimme/env/ && \
-    curl -sL -o /opt/buildhome/.gimme/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme && \
-    chmod u+x /opt/buildhome/.gimme/bin/gimme
-ENV PATH="$PATH:/opt/buildhome/.gimme/bin"
-ENV GOPATH="/opt/buildhome/.gimme_cache/gopath"
-ENV GOCACHE="/opt/buildhome/.gimme_cache/gocache"
-ENV GIMME_GO_VERSION="1.19.3"
-ENV GIMME_ENV_PREFIX="/opt/buildhome/.gimme/env"
-ENV GIMME_VERSION_PREFIX="/opt/buildhome/.gimme/versions"
-ENV GIMME_TYPE="binary"
-RUN eval "$(gimme 1.19.3)"
+# Install gimme (Go manager) replaced by gvm as gimme does not handles go1.4+ and pre 1.5 build problems
+# RUN mkdir -p /opt/buildhome/.gimme/bin/ && \
+#     mkdir -p /opt/buildhome/.gimme/env/ && \
+#     curl -sL -o /opt/buildhome/.gimme/bin/gimme https://raw.githubusercontent.com/travis-ci/gimme/master/gimme && \
+#     chmod u+x /opt/buildhome/.gimme/bin/gimme
+#ENV PATH="$PATH:/opt/buildhome/.gimme/bin"
+#ENV GOPATH="/opt/buildhome/.gimme_cache/gopath"
+#ENV GOCACHE="/opt/buildhome/.gimme_cache/gocache"
+#ENV GIMME_GO_VERSION="1.22.3"
+#ENV GIMME_ENV_PREFIX="/opt/buildhome/.gimme/env"
+#ENV GIMME_VERSION_PREFIX="/opt/buildhome/.gimme/versions"
+#ENV GIMME_TYPE="binary"
+#RUN eval "$(gimme 1.22.3)"
 
 # PHP: set default to 5.6
 RUN wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add - \
@@ -93,13 +98,13 @@ RUN apt-get install -y \
 RUN mkdir /app
 WORKDIR /app
 COPY entrypoint.sh /
+COPY entrypoint.js /
 RUN chmod +x /entrypoint.sh
 
 # Install nvm and use it to install Node.js
 #RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
 #        export NVM_DIR="$HOME/.nvm" && \
 #        . "$NVM_DIR/nvm.sh"
-ENV NVM_DIR="/root/.nvm"
 ENV BUILD_COMMAND="npm install"
 ENV ROOT_PATH="."
 ENV BUILD_PATH="build"
@@ -118,13 +123,13 @@ ENV PANDA_PREVIEW=disable
 ENV PANDA_CI=true
 
 # Install Hugo
-#RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
+# RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
 
 # Install Jekyll
 RUN gem install jekyll
 
 # Install Gatsby
-RUN npm install -g gatsby-cli create-next-app create-nuxt-app npm@latest yarn@latest pnpm@latest
+RUN npm install -g --force gatsby-cli create-next-app create-nuxt-app npm@latest yarn@latest pnpm@latest
 
 WORKDIR /
 CMD [ "./entrypoint.sh" ]
