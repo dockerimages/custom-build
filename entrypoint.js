@@ -73,9 +73,31 @@ const installPhpGlobal = ()=>{
     RUN('wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add - && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list')
     RUN('apt-get update')
 };
-const installNodeGlobal = ()=>{};
+
+const usePhp = (PHP_VERSION=env[PHP_VERSION]||"7.2") =>{
+    LOG(`PHP installation logic goes here for version ${PHP_VERSION}`)
+    RUN(`apt-get install -y php${PHP_VERSION} php${PHP_VERSION}-xml \
+    php${PHP_VERSION}-mbstring php${PHP_VERSION}-gd php${PHP_VERSION}-sqlite3 \
+    php${PHP_VERSION}-curl php${PHP_VERSION}-zip`);
+};
+
+const installNodeGlobal = ()=>{/** Preinstalled via DockerImage node:latest */};
+
+const installGoGlobal = ()=>{
+    // apt install bison
+    // bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+    // gvm install go1.18 -B
+    // gvm use go1.18
+    // gvm use go1.18 --default
+
+};
+const useGo = (GO_VERSION="") => {
+    // gvm install go1.18 -B
+    // gvm use go1.18
+    // gvm use go1.18 --default
+};
+// NodeJS
 const installPythonGlobal = ()=>{};
-const installGoGlobal = ()=>{};
 const useNode = (NODE_VERSION=env[NODE_VERSION]) =>{
     RUN(`npx ${ // Packages
         NODE_VERSION ? `-p node@${NODE_VERSION}` : ""
@@ -85,18 +107,13 @@ const useNode = (NODE_VERSION=env[NODE_VERSION]) =>{
     } ${ // install cmd TODO: Clear behavior of BUILD_COMMAND=npm install
         env.BUILD_COMMAND || usesYarn ? "yarn" : "npm install"
     }`,{ env });
-    // Use NPM SET YARN SET to edit rc files
-    // # Handle NPM_TOKEN
-    // if [ "$NPM_TOKEN" ]; then
-    //   echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
-    // fi
+    // YARN reads also NPM so YARN overwrites NPM if Used
+    // npm login --registry=https://reg.example.com --scope=@myco or
+    // npm config set @myco:registry https://reg.example.com
+    (YARN_NPM_AUTH_TOKEN || NPM_TOKEN) && RUN(`npm config set //reg.example.com/:_authToken ${NPM_TOKEN || YARN_NPM_AUTH_TOKEN}`)
+    // NPM_TOKEN && RUN(`npm config set //reg.example.com/:_authToken ${NPM_TOKEN`)
+    // YARN_NPM_AUTH_TOKEN && RUN(`yarn config set //reg.example.com/:_authToken ${YARN_NPM_AUTH_TOKEN}`
     
-    // # Handle YARN_NPM_AUTH_TOKEN
-    // if [ -n "$YARN_NPM_AUTH_TOKEN" ]; then
-    //   echo "//registry.yarnpkg.com/:_authToken=$YARN_NPM_AUTH_TOKEN" > ~/.yarnrc
-    // fi
-    
-    // # run build script:
     // cd /app
     // ls -al
     // if [ "$USE_YARN" = "true" ]; then
@@ -119,12 +136,15 @@ const useNode = (NODE_VERSION=env[NODE_VERSION]) =>{
     //   fi
     // fi
 };
+
+// https://realpython.com/intro-to-pyenv/
 const usePython = (PYTHON_VERSION="") =>{
     // TODO: Later consider conda as it is more integrated for multi py build
     // pyenv install --list | grep " 3\.[678]"
     // pyenv install $PYTHON_VERSION && pyenv global $PYTHON_VERSION
 };
 const useRuby = (RUBY_VERSION=`${RUN('rbenv install -l')}`.split('\n').filter(x=>!x.includes('-')).pop()) =>{
+
 const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
     if (installedVersion !== RUBY_VERSION) {
         LOG(
@@ -134,28 +154,10 @@ const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
     } 
 };
 
-const useGo = () =>{
-//     # Install Go if GO_VERSION is specified
-// if [ "$GO_VERSION" ]; then
-//   eval "$(gimme "$GO_VERSION")"
-//   echo "Go installation logic goes here for version $GO_VERSION"
-// fi
-
-// supports stable
-// eval "$(curl -sL https://raw.githubusercontent.com/travis-ci/gimme/master/gimme | GIMME_GO_VERSION=1.4 bash)"
-
-};
-const usePhp = (PHP_VERSION=env[PHP_VERSION]||"7.2") =>{
-    LOG(`PHP installation logic goes here for version ${PHP_VERSION}`)
-    RUN(`apt-get install -y php${PHP_VERSION} php${PHP_VERSION}-xml \
-    php${PHP_VERSION}-mbstring php${PHP_VERSION}-gd php${PHP_VERSION}-sqlite3 \
-    php${PHP_VERSION}-curl php${PHP_VERSION}-zip`);
-};
-
 // Checks for custom command 
 RUN(
     process.argv.join(" ").endsWith("entrypoint.js") 
-        ? useNode()
-        // takes the whole CMD without entrypoint "$@"
-        : process.argv.slice(process.argv.indexOf("entrypoint.js")+1||0)
+    ? useNode()
+    // takes the whole CMD without entrypoint "$@"
+    : process.argv.slice(process.argv.indexOf("entrypoint.js")+1||0)
 );
