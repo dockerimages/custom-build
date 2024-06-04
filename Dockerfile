@@ -107,13 +107,12 @@ RUN curl -sSL https://raw.githubusercontent.com/voidint/g/master/install.sh | ba
 RUN mkdir /root/.g/go
 
 
-# Install Gatsby
 
-# Install nvm and use it to install Node.js
-#RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
-#        export NVM_DIR="$HOME/.nvm" && \
-#        . "$NVM_DIR/nvm.sh"
-# eg: npm install
+# Install Gatsby
+# TODO
+
+ENV GOROOT="/root/.g/go"
+ENV PATH="/root/.g/bin:/root/.g/go/bin:$PATH"
 ENV BUILD_COMMAND="" 
 ENV ROOT_PATH="."
 ENV BUILD_PATH="build"
