@@ -3,9 +3,9 @@ const { log: LOG } = console;
 
 // Setting eventual existing propertys from the environment supplyed via docker
 const env = Object.assign({
-    // ex - 18 or 18.x ( defaults to `node:${PHP_VERSION}` of the docker image If not provided)
+    // defaults to `node:latest` of the docker image If not provided
     NODE_VERSION: "",
-    //  nodes environment ( development, production ) ( defaults to `production` if not specified )
+    // defaults to `production` if not specified 
     NODE_ENV: "production",
     // value that sets the npm version. ( defaults to `dockerimage version` if not specified )
     NPM_VERSION: "",
@@ -85,7 +85,7 @@ const useNode = (NODE_VERSION=env[NODE_VERSION]) =>{
     } ${ // install cmd TODO: Clear behavior of BUILD_COMMAND=npm install
         env.BUILD_COMMAND || usesYarn ? "yarn" : "npm install"
     }`,{ env });
-
+    // Use NPM SET YARN SET to edit rc files
     // # Handle NPM_TOKEN
     // if [ "$NPM_TOKEN" ]; then
     //   echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/.npmrc
@@ -123,7 +123,6 @@ const usePython = (PYTHON_VERSION="") =>{
     // TODO: Later consider conda as it is more integrated for multi py build
     // pyenv install --list | grep " 3\.[678]"
     // pyenv install $PYTHON_VERSION && pyenv global $PYTHON_VERSION
-    
 };
 const useRuby = (RUBY_VERSION=`${RUN('rbenv install -l')}`.split('\n').filter(x=>!x.includes('-')).pop()) =>{
 const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
@@ -160,6 +159,3 @@ RUN(
         // takes the whole CMD without entrypoint "$@"
         : process.argv.slice(process.argv.indexOf("entrypoint.js")+1||0)
 );
-
-
-
