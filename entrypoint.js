@@ -39,7 +39,13 @@ const env = Object.assign({
     PANDA_CI: true
 },process.env);
 
-const RUN = async (cmd,{env}={env}) => new Promise((resolve)=>spawn(cmd,{ shell: "/bin/bash",stdio: 'inherit',env }).on('close',()=>resolve()));
+const RUN = async (cmd,{env: ENV}={}) => new Promise(
+    (resolve)=>spawn(
+        cmd,{shell:"/bin/bash",stdio:'inherit',env:ENV||env}
+    ).on(
+        'close',()=>resolve()
+    )
+);
 
 const stringToBoolean = (str) => Boolean(
     str.length && str.startsWith("t")
@@ -102,11 +108,9 @@ const installNodeGlobal = ()=>{
 };
 
 const installGoGlobal = ()=>{
-    // apt install bison
-    // bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
-    // gvm install go1.18 -B
-    // gvm use go1.18
-    // gvm use go1.18 --default
+    RUN('curl -sSL https://raw.githubusercontent.com/voidint/g/master/install.sh | bash')
+
+    RUN('mkdir /root/.g/go')
 
 };
 const useGo = async (GO_VERSION=env.GO_VERSION||"1.19.3") => {
@@ -124,8 +128,6 @@ const useGo = async (GO_VERSION=env.GO_VERSION||"1.19.3") => {
         g install go1.20
      */
 };
-
-
 
 // NodeJS
 const installPythonGlobal = ()=>{};
@@ -174,9 +176,9 @@ const usePython = (PYTHON_VERSION="") =>{
     // pyenv install --list | grep " 3\.[678]"
     // pyenv install $PYTHON_VERSION && pyenv global $PYTHON_VERSION
 };
-const useRuby = (RUBY_VERSION=`${RUN('rbenv install -l')}`.split('\n').filter(x=>!x.includes('-')).pop()) =>{
 
-const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
+const useRuby = (RUBY_VERSION=`${RUN('rbenv install -l')}`.split('\n').filter(x=>!x.includes('-')).pop()) =>{
+    const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
     if (installedVersion !== RUBY_VERSION) {
         LOG(
             `Ruby version ${RUBY_VERSION} is different from the default Ruby version: ${installedVersion}. Installing...`
@@ -189,7 +191,8 @@ const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
 const CMD = process.argv.join(" ").endsWith("entrypoint.js") 
 ? useNode()
 // takes the whole CMD without entrypoint "$@"
-: process.argv.slice(process.argv.indexOf("/entrypoint.js")+1||0).join(" ")
+: process.argv.slice(process.argv.indexOf("/entrypoint.js")+1||0).join(" ");
+
 //LOG(process.argv,process.argv.indexOf("/entrypoint.js")+1||0,CMD)
 Promise.all([
     env.GO_VERSION && useGo(env.GO_VERSION),
