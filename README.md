@@ -1,5 +1,5 @@
 # panda-build-image
-The Build image is based on node:latest which is based on debian bullseye including dev tools as of time of writing middle 2024.
+The Build image is based on node:latest which is based on debian bookworm including dev tools as of time of writing middle 2024.
 
 it includes a node entrypoint.js written in nodejs that supports the following ENV variables. on container execution.
 All none NodeJS Related Environment variables also get hornored and used on image build it self.
@@ -38,3 +38,22 @@ All none NodeJS Related Environment variables also get hornored and used on imag
   - Used to enable/disable PullRequest pipeline (defaults to `disable` if not specified)
 - **`PANDA_CI`:**
   - `true`/`false` will enable/disable pipeline trigger (defaults to `true` if not specified)
+
+
+
+## Build run
+```
+docker build . --tag b:latest
+docker run --rm -e GO_VERSION=1.4 -e NPM_VERSION=10 -e NODE_ENV=development -e NODE_VERSION=20 localhost/b:latest go version
+docker run --rm -e GO_VERSION=1.19 -e NPM_VERSION=20 -e NODE_ENV=prod -e NODE_VERSION=20 localhost/b:latest
+```
+
+
+## Advanced and debugging
+
+#### run with a specific npm and node version
+```bash
+docker run -v $(PWD)/app:/app -w /app -e NODE_ENV=production docker-image npx....
+# Or use BUILD_COMMAND ENV npx -p node@latest -p yarn@latest yarn
+docker run -v $(PWD)/app:/app -w /app -e NODE_ENV=production -e "npx -p node@latest -p yarn@latest yarn" docker-image
+```

@@ -102,10 +102,9 @@ RUN apt-get install -y \
 # do not delete package cache we need it for version switching.  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Go Version manager source /root/.gvm/scripts/gvm
-RUN apt-get install -y golang-go bsdmainutils
-RUN curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer | bash
-RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
-#RUN bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
+RUN curl -sSL https://raw.githubusercontent.com/voidint/g/master/install.sh | bash
+# echo "unalias g" >> ~/.bashrc # Optional. If other programs (such as `git`) have used `g` as an alias.
+RUN mkdir /root/.g/go
 
 
 # Install Gatsby

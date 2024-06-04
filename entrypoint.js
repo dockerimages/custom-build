@@ -1,4 +1,4 @@
-const { execSync: RUN } = require("node:child_process");
+const { spawn } = require("node:child_process");
 const { log: LOG, error: ERROR } = console;
 
 // Setting eventual existing propertys from the environment supplyed via docker
@@ -37,13 +37,20 @@ const env = Object.assign({
     PANDA_PREVIEW: 'disabled',
     // true/false will enable/disable pipeline trigger. ( defaults to `true` if not specified )
     PANDA_CI: true
-},process.env)
-const stringToBoolean = (str) => Boolean(str.length && str.startsWith("t"));
+},process.env);
+
+const RUN = async (cmd,{env}={env}) => new Promise((resolve)=>spawn(cmd,{ shell: "/bin/bash",stdio: 'inherit',env }).on('close',()=>resolve()));
+
+const stringToBoolean = (str) => Boolean(
+    str.length && str.startsWith("t")
+);
+
 env.USE_YARN = stringToBoolean(env.USE_YARN);
 env.PANDA_CI = stringToBoolean(env.PANDA_CI);
-env.PATH="/root/.gvm/bin:"+env.PATH
 
-const usesYarn = env.USE_YARN || Object.keys(env).filter(key=>key.startsWith('YARN')).find(yarnKey=>env[yarnKey]);
+const usesYarn = env.USE_YARN || Object.keys(env).filter(
+    key=>key.startsWith('YARN')).find(yarnKey=>env[yarnKey]  
+);
 
 // # Set color '\033[1;33m'; === '\x1b[1;33m';
 const YELLOW='\x1b[1;33m';
@@ -66,33 +73,33 @@ const installRubyGlobal = ()=>{
     // ENV RBENV_ROOT=/usr/local/rbenv
     // ENV PATH="$RBENV_ROOT/bin:$RBENV_ROOT/shims:$PATH"
 
-    // # Install ruby-build
-    // mkdir /usr/local/rbenv/plugins
-    // git clone https://github.com/sstephenson/ruby-build.git /usr/local/rbenv/plugins/ruby-build
-    // /usr/local/rbenv/plugins/ruby-build/install.sh
-    // rbenv install 2.6.2 && rbenv global 2.6.2
-    // gem install bundler -v 2.4.22
-};
+    // # Install ruby-bu    // rbenv install 2.6.2 && rbenv global 2.6.2
+// gem install bundler -;v 2.4.22
+}
 const installPhpGlobal = ()=>{
-    RUN('wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add - && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list')
+    RUN(`wget -q https://packages.sury.org/php/apt.gpg -O- | \
+    apt-key add - && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | \
+    tee /etc/apt/sources.list.d/php.list`)
     RUN('apt-get update')
 };
 
-const usePhp = (PHP_VERSION=env.PHP_VERSION||"7.2") =>{
+const usePhp = async (PHP_VERSION=env.PHP_VERSION||"7.2") =>{
     LOG(`PHP installation logic goes here for version ${PHP_VERSION}`)
-    RUN(`apt-get install -y php${PHP_VERSION} php${PHP_VERSION}-xml \
+    await RUN(`apt-get install -y php${PHP_VERSION} php${PHP_VERSION}-xml \
     php${PHP_VERSION}-mbstring php${PHP_VERSION}-gd php${PHP_VERSION}-sqlite3 \
     php${PHP_VERSION}-curl php${PHP_VERSION}-zip`);
-    RUN(`update-alternatives --set php /usr/bin/php${PHP_VERSION}`);
+    await RUN(`update-alternatives --set php /usr/bin/php${PHP_VERSION}`);
     // RUN(`update-alternatives --set php /usr/bin/phar${PHP_VERSION}`);
     // RUN(`update-alternatives --set php /usr/bin/phar.pahr${PHP_VERSION}`);
     // RUN(`update-alternatives --set php /usr/bin/phpize${PHP_VERSION}`);
     // RUN(`update-alternatives --set php /usr/bin/php-config${PHP_VERSION}`);
 };
 
-env.PHP_VERSION && usePhp();
 
-const installNodeGlobal = ()=>{/** Preinstalled via DockerImage node:latest */};
+
+const installNodeGlobal = ()=>{
+    /** Preinstalled via DockerImage node:latest */
+};
 
 const installGoGlobal = ()=>{
     // apt install bison
@@ -102,41 +109,27 @@ const installGoGlobal = ()=>{
     // gvm use go1.18 --default
 
 };
-const useGo = (GO_VERSION="1.19.3") => {
-
-    LOG(`${RUN(`g install ${GO_VERSION}`)
+const useGo = async (GO_VERSION=env.GO_VERSION||"1.19.3") => {
+    await RUN(`g install ${GO_VERSION}`,{env});
     
-    //RUN(`gvm install go${GO_VERSION} -B && [[ -s "$GVM_ROOT/scripts/gvm" ]] && source "$GVM_ROOT/scripts/gvm" use go${GO_VERSION} --default`,{ env,shell:"/bin/bash"})
-
-    }`);
-    // gvm install go1.18 -B
-    // gvm use go1.18
-    // gvm use go1.18 --default
-
-    // Notes about compiling
+     // Notes about compiling
     /**
      To install Go 1.20+
      Go 1.5+ removed the C compilers from the toolchain and replaced them with one written in Go   
      Go 1.20+ requires go1.17.3+. Use the below:
-        gvm install go1.4 -B
-        gvm use go1.4
+        g install 1.4
         export GOROOT_BOOTSTRAP=$GOROOT
-        gvm install go1.17.13
-        gvm use go1.17.13
+        g install go1.17.13
         export GOROOT_BOOTSTRAP=$GOROOT
-        gvm install go1.20
-        gvm use go1.20
+        g install go1.20
      */
 };
-// try { // [[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
- env.GO_VERSION && useGo(env.GO_VERSION)
-// process.exit()
-// } catch(e) {ERROR(e)}
-// console.log(env.GO_VERSION);
-// process.exit()
+
+
+
 // NodeJS
 const installPythonGlobal = ()=>{};
-const useNode = (NODE_VERSION=env.NODE_VERSION) =>{
+const useNode = async (NODE_VERSION=env.NODE_VERSION) =>{
     const command = `npx ${ // Packages
         NODE_VERSION ? `-p node@${NODE_VERSION}` : ""
     } ${
@@ -154,20 +147,15 @@ const useNode = (NODE_VERSION=env.NODE_VERSION) =>{
     // YARN_NPM_AUTH_TOKEN && RUN(`yarn config set //reg.example.com/:_authToken ${YARN_NPM_AUTH_TOKEN}`
 
     LOG({env},command,env.BUILD_COMMAND)
-    LOG(`${RUN(command,{ env }).toString()||""}`);
-
-    return "exit 0";
+    await RUN(command,{ env });
+         
     // cd /app
     // ls -al
     // if [ "$USE_YARN" = "true" ]; then
     //   echo $YARN_FLAGS
-    //   if [ -n "$YARN_FLAGS" ]; then
-    //     echo -e "${GREEN} Using yarn install with flags from environment: ${YARN_FLAGS} ${NC}"
-    //     echo "$YARN_FLAGS yarn install && $BUILD_COMMAND"
-    //     export $YARN_FLAGS; yarn install && $BUILD_COMMAND
-    //   else
-    //     echo -e "${GREEN} Using yarn install without flags ${NC}"
-    //     yarn install
+    //   if [ -n "$YARN_FLAGS" ]; th//   else
+       //echo -e "${GREEN} Using yarn ;install without flags ${NC}"
+    
     //   fi
     // else
     //   if [ -n "$NPM_FLAGS" ]; then
@@ -203,4 +191,7 @@ const CMD = process.argv.join(" ").endsWith("entrypoint.js")
 // takes the whole CMD without entrypoint "$@"
 : process.argv.slice(process.argv.indexOf("/entrypoint.js")+1||0).join(" ")
 //LOG(process.argv,process.argv.indexOf("/entrypoint.js")+1||0,CMD)
-LOG(`${RUN(CMD)}`);
+Promise.all([
+    env.GO_VERSION && useGo(env.GO_VERSION),
+    env.PHP_VERSION && usePhp()
+]).then(()=>RUN(CMD, {env}));
