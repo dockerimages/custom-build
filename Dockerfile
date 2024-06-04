@@ -23,11 +23,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends locales locales
     gnupg2 \
     postgresql \
     bison \
-    && apt-get clean && apt-get update && rm -rf /var/lib/apt/lists/*
-
-# Go Version manager source /root/.gvm/scripts/gvm
-RUN curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer | bash
-   
+    && apt-get update
+    #    && apt-get clean && apt-get update && rm -rf /var/lib/apt/lists/*
+RUN npm install -g --force gatsby-cli create-next-app create-nuxt-app npm@latest yarn@latest pnpm@latest
 # Install rbenv and Ruby
 RUN git clone https://github.com/sstephenson/rbenv.git /usr/local/rbenv
 RUN echo '# rbenv setup' > /etc/profile.d/rbenv.sh
@@ -45,6 +43,11 @@ RUN /usr/local/rbenv/plugins/ruby-build/install.sh
 RUN rbenv install 3.3.2 && rbenv global 3.3.2
 RUN gem install bundler 
 #-v 2.4.22
+# Install Hugo
+# RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
+
+# Install Jekyll
+RUN gem install jekyll
 
 # Install pyenv and Python
 RUN curl https://pyenv.run | bash
@@ -71,6 +74,8 @@ RUN pip install sphinx
 #ENV GIMME_TYPE="binary"
 #RUN eval "$(gimme 1.22.3)"
 
+
+
 # PHP: set default to 5.6
 RUN wget -q https://packages.sury.org/php/apt.gpg -O- | apt-key add - \
     && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | tee /etc/apt/sources.list.d/php.list
@@ -96,19 +101,21 @@ RUN apt-get install -y \
     
 # do not delete package cache we need it for version switching.  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install Hugo
-# RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
+# Go Version manager source /root/.gvm/scripts/gvm
+RUN apt-get install -y golang-go bsdmainutils
+RUN curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer | bash
+RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
+#RUN bash < <(curl -s -S -L https://raw.githubusercontent.com/moovweb/gvm/master/binscripts/gvm-installer)
 
-# Install Jekyll
-RUN gem install jekyll
 
 # Install Gatsby
-RUN npm install -g --force gatsby-cli create-next-app create-nuxt-app npm@latest yarn@latest pnpm@latest
+
 # Install nvm and use it to install Node.js
 #RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
 #        export NVM_DIR="$HOME/.nvm" && \
 #        . "$NVM_DIR/nvm.sh"
-ENV BUILD_COMMAND="npm install"
+# eg: npm install
+ENV BUILD_COMMAND="" 
 ENV ROOT_PATH="."
 ENV BUILD_PATH="build"
 ENV NODE_ENV="product"
@@ -121,6 +128,7 @@ ENV USE_YARN="false"
 ENV YARN_VERSION=""
 ENV YARN_FLAGS=""
 ENV YARN_NPM_AUTH_TOKEN=""
+ENV GVM_ROOT="/root/.gvm"
 ENV GIT_COMMIT_ID="test"
 ENV PANDA_PREVIEW=disable
 ENV PANDA_CI=true
@@ -130,5 +138,5 @@ COPY entrypoint.sh /
 COPY entrypoint.js /
 RUN chmod +x /entrypoint.sh
 #WORKDIR /
-ENTRYPOINT [ "node", "/entrypoint.js" ]
+ENTRYPOINT [ "/entrypoint.sh" ]
 # CMD [ "./entrypoint.sh" ]

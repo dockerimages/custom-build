@@ -1,5 +1,5 @@
 const { execSync: RUN } = require("node:child_process");
-const { log: LOG } = console;
+const { log: LOG, error: ERROR } = console;
 
 // Setting eventual existing propertys from the environment supplyed via docker
 const env = Object.assign({
@@ -28,18 +28,22 @@ const env = Object.assign({
     // used to set the Ruby version. ( default to `latest` ruby version if not specified )
     RUBY_VERSION: "latest",
     // value that sets the PHP version. ( default to `php7` if not specified )
-    PHP_VERSION: "7",
+    PHP_VERSION: "",
     // value that sets the Go version. ( defaults to `go1.19.3` if not specified )
-    GO_VERSION: "1.19.3",
+    GO_VERSION: "",
     // ENV USE_YARN="false" in dockerfile 
-    USE_YARN:"false",
+    USE_YARN: false,
      // used to enable/disable PullRequest pipeline.  ( defaults to `disable` if not specified )
     PANDA_PREVIEW: 'disabled',
     // true/false will enable/disable pipeline trigger. ( defaults to `true` if not specified )
     PANDA_CI: true
-},process.env);
+},process.env)
+const stringToBoolean = (str) => Boolean(str.length && str.startsWith("t"));
+env.USE_YARN = stringToBoolean(env.USE_YARN);
+env.PANDA_CI = stringToBoolean(env.PANDA_CI);
+env.PATH="/root/.gvm/bin:"+env.PATH
 
-const usesYarn = env.USE_YARN || Object.keys(env).filter(key=key.startsWith('YARN')).find(yarnKey=>env[yarnKey]);
+const usesYarn = env.USE_YARN || Object.keys(env).filter(key=>key.startsWith('YARN')).find(yarnKey=>env[yarnKey]);
 
 // # Set color '\033[1;33m'; === '\x1b[1;33m';
 const YELLOW='\x1b[1;33m';
@@ -85,6 +89,7 @@ const usePhp = (PHP_VERSION=env.PHP_VERSION||"7.2") =>{
     // RUN(`update-alternatives --set php /usr/bin/phpize${PHP_VERSION}`);
     // RUN(`update-alternatives --set php /usr/bin/php-config${PHP_VERSION}`);
 };
+
 env.PHP_VERSION && usePhp();
 
 const installNodeGlobal = ()=>{/** Preinstalled via DockerImage node:latest */};
@@ -97,7 +102,13 @@ const installGoGlobal = ()=>{
     // gvm use go1.18 --default
 
 };
-const useGo = (GO_VERSION="") => {
+const useGo = (GO_VERSION="1.19.3") => {
+
+    LOG(`${RUN(`g install ${GO_VERSION}`)
+    
+    //RUN(`gvm install go${GO_VERSION} -B && [[ -s "$GVM_ROOT/scripts/gvm" ]] && source "$GVM_ROOT/scripts/gvm" use go${GO_VERSION} --default`,{ env,shell:"/bin/bash"})
+
+    }`);
     // gvm install go1.18 -B
     // gvm use go1.18
     // gvm use go1.18 --default
@@ -117,16 +128,22 @@ const useGo = (GO_VERSION="") => {
         gvm use go1.20
      */
 };
+// try { // [[ -s "$HOME/.gvm/scripts/gvm" ]] && source "$HOME/.gvm/scripts/gvm"
+ env.GO_VERSION && useGo(env.GO_VERSION)
+// process.exit()
+// } catch(e) {ERROR(e)}
+// console.log(env.GO_VERSION);
+// process.exit()
 // NodeJS
 const installPythonGlobal = ()=>{};
 const useNode = (NODE_VERSION=env.NODE_VERSION) =>{
     const command = `npx ${ // Packages
         NODE_VERSION ? `-p node@${NODE_VERSION}` : ""
     } ${
-        env.NPM_VERSION ? `-p npm@${NPM_VERSION}`: ""
-    } ${env.YARN_VERSION ? `-p yarn@${YARN_VERSION}` : usesYarn ? "-p yarn" : ""
+        env.NPM_VERSION ? `-p npm@${env.NPM_VERSION}`: ""
+    } ${env.YARN_VERSION ? `-p yarn@${env.YARN_VERSION}` : usesYarn ? "-p yarn" : ""
     } ${ // install cmd TODO: Clear behavior of BUILD_COMMAND=npm install
-        env.BUILD_COMMAND || env.usesYarn ? "yarn" : "npm install"
+        env.BUILD_COMMAND ? env.BUILD_COMMAND : env.usesYarn ? "yarn" : "npm install"
     }`;
 
     // YARN reads also NPM so YARN overwrites NPM if Used
@@ -136,8 +153,8 @@ const useNode = (NODE_VERSION=env.NODE_VERSION) =>{
     // NPM_TOKEN && RUN(`npm config set //reg.example.com/:_authToken ${env.NPM_TOKEN`)
     // YARN_NPM_AUTH_TOKEN && RUN(`yarn config set //reg.example.com/:_authToken ${YARN_NPM_AUTH_TOKEN}`
 
-    LOG({env},command)
-    LOG(RUN(command,{ env }).toString()||"");
+    LOG({env},command,env.BUILD_COMMAND)
+    LOG(`${RUN(command,{ env }).toString()||""}`);
 
     return "exit 0";
     // cd /app
