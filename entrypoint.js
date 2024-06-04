@@ -74,17 +74,18 @@ const installPhpGlobal = ()=>{
     RUN('apt-get update')
 };
 
-const usePhp = (PHP_VERSION=env[PHP_VERSION]||"7.2") =>{
+const usePhp = (PHP_VERSION=env.PHP_VERSION||"7.2") =>{
     LOG(`PHP installation logic goes here for version ${PHP_VERSION}`)
     RUN(`apt-get install -y php${PHP_VERSION} php${PHP_VERSION}-xml \
     php${PHP_VERSION}-mbstring php${PHP_VERSION}-gd php${PHP_VERSION}-sqlite3 \
     php${PHP_VERSION}-curl php${PHP_VERSION}-zip`);
     RUN(`update-alternatives --set php /usr/bin/php${PHP_VERSION}`);
-    RUN(`update-alternatives --set php /usr/bin/phar${PHP_VERSION}`);
-    RUN(`update-alternatives --set php /usr/bin/phar.pahr${PHP_VERSION}`);
-    RUN(`update-alternatives --set php /usr/bin/phpize${PHP_VERSION}`);
-    RUN(`update-alternatives --set php /usr/bin/php-config${PHP_VERSION}`);
+    // RUN(`update-alternatives --set php /usr/bin/phar${PHP_VERSION}`);
+    // RUN(`update-alternatives --set php /usr/bin/phar.pahr${PHP_VERSION}`);
+    // RUN(`update-alternatives --set php /usr/bin/phpize${PHP_VERSION}`);
+    // RUN(`update-alternatives --set php /usr/bin/php-config${PHP_VERSION}`);
 };
+env.PHP_VERSION && usePhp();
 
 const installNodeGlobal = ()=>{/** Preinstalled via DockerImage node:latest */};
 
@@ -118,22 +119,27 @@ const useGo = (GO_VERSION="") => {
 };
 // NodeJS
 const installPythonGlobal = ()=>{};
-const useNode = (NODE_VERSION=env[NODE_VERSION]) =>{
-    RUN(`npx ${ // Packages
+const useNode = (NODE_VERSION=env.NODE_VERSION) =>{
+    const command = `npx ${ // Packages
         NODE_VERSION ? `-p node@${NODE_VERSION}` : ""
     } ${
-        NPM_VERSION ? `-p npm@${NPM_VERSION}`: ""
+        env.NPM_VERSION ? `-p npm@${NPM_VERSION}`: ""
     } ${env.YARN_VERSION ? `-p yarn@${YARN_VERSION}` : usesYarn ? "-p yarn" : ""
     } ${ // install cmd TODO: Clear behavior of BUILD_COMMAND=npm install
-        env.BUILD_COMMAND || usesYarn ? "yarn" : "npm install"
-    }`,{ env });
+        env.BUILD_COMMAND || env.usesYarn ? "yarn" : "npm install"
+    }`;
+
     // YARN reads also NPM so YARN overwrites NPM if Used
     // npm login --registry=https://reg.example.com --scope=@myco or
     // npm config set @myco:registry https://reg.example.com
-    (YARN_NPM_AUTH_TOKEN || NPM_TOKEN) && RUN(`npm config set //reg.example.com/:_authToken ${NPM_TOKEN || YARN_NPM_AUTH_TOKEN}`)
-    // NPM_TOKEN && RUN(`npm config set //reg.example.com/:_authToken ${NPM_TOKEN`)
+    (env.YARN_NPM_AUTH_TOKEN || env.NPM_TOKEN) && RUN(`npm config set //reg.example.com/:_authToken ${env.NPM_TOKEN || env.YARN_NPM_AUTH_TOKEN}`)
+    // NPM_TOKEN && RUN(`npm config set //reg.example.com/:_authToken ${env.NPM_TOKEN`)
     // YARN_NPM_AUTH_TOKEN && RUN(`yarn config set //reg.example.com/:_authToken ${YARN_NPM_AUTH_TOKEN}`
-    
+
+    LOG({env},command)
+    LOG(RUN(command,{ env }).toString()||"");
+
+    return "exit 0";
     // cd /app
     // ls -al
     // if [ "$USE_YARN" = "true" ]; then
@@ -175,9 +181,9 @@ const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
 };
 
 // Checks for custom command 
-RUN(
-    process.argv.join(" ").endsWith("entrypoint.js") 
-    ? useNode()
-    // takes the whole CMD without entrypoint "$@"
-    : process.argv.slice(process.argv.indexOf("entrypoint.js")+1||0)
-);
+const CMD = process.argv.join(" ").endsWith("entrypoint.js") 
+? useNode()
+// takes the whole CMD without entrypoint "$@"
+: process.argv.slice(process.argv.indexOf("/entrypoint.js")+1||0).join(" ")
+//LOG(process.argv,process.argv.indexOf("/entrypoint.js")+1||0,CMD)
+LOG(`${RUN(CMD)}`);

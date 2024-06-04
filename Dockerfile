@@ -95,12 +95,15 @@ RUN apt-get install -y \
     php7.2-zip 
     
 # do not delete package cache we need it for version switching.  && apt-get clean && rm -rf /var/lib/apt/lists/*
-RUN mkdir /app
-WORKDIR /app
-COPY entrypoint.sh /
-COPY entrypoint.js /
-RUN chmod +x /entrypoint.sh
 
+# Install Hugo
+# RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
+
+# Install Jekyll
+RUN gem install jekyll
+
+# Install Gatsby
+RUN npm install -g --force gatsby-cli create-next-app create-nuxt-app npm@latest yarn@latest pnpm@latest
 # Install nvm and use it to install Node.js
 #RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
 #        export NVM_DIR="$HOME/.nvm" && \
@@ -121,15 +124,11 @@ ENV YARN_NPM_AUTH_TOKEN=""
 ENV GIT_COMMIT_ID="test"
 ENV PANDA_PREVIEW=disable
 ENV PANDA_CI=true
-
-# Install Hugo
-# RUN wget https://github.com/gohugoio/hugo/releases/download/v0.111.3/hugo_0.111.3_Linux-64bit.deb && dpkg -i hugo_0.111.3_Linux-64bit.deb
-
-# Install Jekyll
-RUN gem install jekyll
-
-# Install Gatsby
-RUN npm install -g --force gatsby-cli create-next-app create-nuxt-app npm@latest yarn@latest pnpm@latest
-
-WORKDIR /
-CMD [ "./entrypoint.sh" ]
+RUN mkdir /app
+WORKDIR /app
+COPY entrypoint.sh /
+COPY entrypoint.js /
+RUN chmod +x /entrypoint.sh
+#WORKDIR /
+ENTRYPOINT [ "node", "/entrypoint.js" ]
+# CMD [ "./entrypoint.sh" ]
