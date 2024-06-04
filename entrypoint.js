@@ -1,5 +1,10 @@
-const { spawn } = require("node:child_process");
+const { spawn, execSync } = require("node:child_process");
 const { log: LOG, error: ERROR } = console;
+
+// # Set color '\033[1;33m'; === '\x1b[1;33m';
+const YELLOW='\x1b[1;33m';
+const GREEN='\x1b[0;32m';
+const NC='\x1b[0m'; // No Color
 
 // Setting eventual existing propertys from the environment supplyed via docker
 const env = Object.assign({
@@ -26,7 +31,7 @@ const env = Object.assign({
     // passed as flags on the `bun install` command. (accept `null` if not specified )
     BUN_FLAGS: "",
     // used to set the Ruby version. ( default to `latest` ruby version if not specified )
-    RUBY_VERSION: "latest",
+    RUBY_VERSION: "",
     // value that sets the PHP version. ( default to `php7` if not specified )
     PHP_VERSION: "",
     // value that sets the Go version. ( defaults to `go1.19.3` if not specified )
@@ -40,11 +45,13 @@ const env = Object.assign({
 },process.env);
 
 const RUN = async (cmd,{env: ENV}={}) => new Promise(
-    (resolve)=>spawn(
+    (resolve)=>{
+    LOG(GREEN+"Executing:",cmd,NC);
+    spawn(
         cmd,{shell:"/bin/bash",stdio:'inherit',env:ENV||env}
     ).on(
         'close',()=>resolve()
-    )
+    )}
 );
 
 const stringToBoolean = (str) => Boolean(
@@ -58,10 +65,7 @@ const usesYarn = env.USE_YARN || Object.keys(env).filter(
     key=>key.startsWith('YARN')).find(yarnKey=>env[yarnKey]  
 );
 
-// # Set color '\033[1;33m'; === '\x1b[1;33m';
-const YELLOW='\x1b[1;33m';
-const GREEN='\x1b[0;32m';
-const NC='\x1b[0m'; // No Color
+
 
 const testPathPrefix = __dirname;
 
@@ -82,11 +86,11 @@ const installRubyGlobal = ()=>{
     // # Install ruby-bu    // rbenv install 2.6.2 && rbenv global 2.6.2
 // gem install bundler -;v 2.4.22
 }
-const installPhpGlobal = ()=>{
-    RUN(`wget -q https://packages.sury.org/php/apt.gpg -O- | \
+const installPhpGlobal = async ()=>{
+    await RUN(`wget -q https://packages.sury.org/php/apt.gpg -O- | \
     apt-key add - && echo "deb https://packages.sury.org/php/ $(lsb_release -sc) main" | \
     tee /etc/apt/sources.list.d/php.list`)
-    RUN('apt-get update')
+    await RUN('apt-get update')
 };
 
 const usePhp = async (PHP_VERSION=env.PHP_VERSION||"7.2") =>{
@@ -101,17 +105,13 @@ const usePhp = async (PHP_VERSION=env.PHP_VERSION||"7.2") =>{
     // RUN(`update-alternatives --set php /usr/bin/php-config${PHP_VERSION}`);
 };
 
-
-
 const installNodeGlobal = ()=>{
     /** Preinstalled via DockerImage node:latest */
 };
 
 const installGoGlobal = ()=>{
     RUN('curl -sSL https://raw.githubusercontent.com/voidint/g/master/install.sh | bash')
-
     RUN('mkdir /root/.g/go')
-
 };
 const useGo = async (GO_VERSION=env.GO_VERSION||"1.19.3") => {
     await RUN(`g install ${GO_VERSION}`,{env});
@@ -171,30 +171,39 @@ const useNode = async (NODE_VERSION=env.NODE_VERSION) =>{
 };
 
 // https://realpython.com/intro-to-pyenv/
-const usePython = (PYTHON_VERSION="") =>{
+const usePython = (PYTHON_VERSION=env.PYTHON_VERSION|| `${
+    execSync(`pyenv install --list | grep ${PYTHON_VERSION}`) // Gets lates Ruby Version
+}`.split('\n').filter(x=>!x.includes('-')).slice(2)[0]) =>{
     // TODO: Later consider conda as it is more integrated for multi py build
     // pyenv install --list | grep " 3\.[678]"
-    // pyenv install $PYTHON_VERSION && pyenv global $PYTHON_VERSION
+    execSync(`pyenv install ${PYTHON_VERSION} && pyenv global ${PYTHON_VERSION}`)
 };
 
-const useRuby = (RUBY_VERSION=`${RUN('rbenv install -l')}`.split('\n').filter(x=>!x.includes('-')).pop()) =>{
-    const installedVersion = `${RUN('ruby -v | cut -d " " -f 2')}`;
+const useRuby = async (RUBY_VERSION=env.RUBY_VERSION || `${
+    execSync('rbenv install -l') // Gets lates Ruby Version
+}`.split('\n').filter(x=>!x.includes('-')).slice(2)[0]) =>{
+    const installedVersion = `${execSync('ruby -v | cut -d " " -f 2')}`.trim();
+    
     if (installedVersion !== RUBY_VERSION) {
         LOG(
             `Ruby version ${RUBY_VERSION} is different from the default Ruby version: ${installedVersion}. Installing...`
         );
-        RUN(`rbenv install ${RUBY_VERSION} && rbenv global ${RUBY_VERSION}`);
+        await RUN(`rbenv install ${RUBY_VERSION} && rbenv global ${RUBY_VERSION}`);
     } 
 };
 
 // Checks for custom command 
-const CMD = process.argv.join(" ").endsWith("entrypoint.js") 
-? useNode()
-// takes the whole CMD without entrypoint "$@"
-: process.argv.slice(process.argv.indexOf("/entrypoint.js")+1||0).join(" ");
+
 
 //LOG(process.argv,process.argv.indexOf("/entrypoint.js")+1||0,CMD)
 Promise.all([
-    env.GO_VERSION && useGo(env.GO_VERSION),
-    env.PHP_VERSION && usePhp()
-]).then(()=>RUN(CMD, {env}));
+    env.PYTHON_VERSION && usePython(),
+    env.GO_VERSION && useGo(env.GO_VERSION), // Only for documentation that version is optinal
+    env.PHP_VERSION && usePhp(),
+    env.RUBY_VERSION && useRuby(),
+]).then(async ()=>
+    process.argv.join(" ").endsWith("entrypoint.js") // strip node entrypoint.js from args
+        ? useNode()
+        // takes the whole CMD without entrypoint "$@"
+        : RUN(process.argv.slice(process.argv.indexOf("/entrypoint.js")+1||0).join(" "),{env})
+);
